@@ -23,3 +23,7 @@ This example deploys a server of [Kubo](https://github.com/ipfs/kubo).
 
 - Source repo: https://github.com/FournyP/job-ops-railway-template
 - Docs: https://jobops.dakheera47.com/docs
+
+## ⚖️ License
+
+[MIT](LICENSE)
