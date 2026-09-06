@@ -21,6 +21,41 @@ scores postings with an LLM and generates tailored CVs through Reactive Resume.
 - Fill in the variables
 - Deploy! 🚄
 
+## 🧱 Infrastructure as Code
+
+`.railway/railway.ts` defines the whole project — the service, its volume and every
+variable.
+
+```bash
+railway link
+npm install
+
+# First apply only; later runs omit these and preserve() keeps the values.
+export LLM_API_KEY=...
+export RXRESUME_EMAIL=you@example.com RXRESUME_PASSWORD='...'
+
+npm run plan     # read the diff before applying
+npm run apply
+railway domain --service job-ops
+```
+
+This template deploys Job Ops and nothing else. Its state is SQLite on the volume, so it
+needs no Postgres, no KeyDB and no bucket. It talks to Reactive Resume over HTTP and
+defaults to the hosted service; set `RXRESUME_URL` to use your own instance, deployed from
+its own project.
+
+Needs the Railway CLI 5.42.1 or newer: the IaC engine ships in the CLI, not in the npm
+package. If you forked this repo, change `REPO` in `railway.ts` to your own before applying.
+
+Link it to a project dedicated to this template. An apply deletes every resource **and
+every variable** the file does not declare, so from then on variables live in `railway.ts`,
+not the dashboard. Do not point it at a project created from the deploy button — the
+service names differ, and a mismatch is a delete and recreate, not a rename.
+
+## ⬆️ Upgrading
+
+Railway template updates are opt-in — an existing deployment keeps running until you apply the update. See the [changelog](CHANGELOG.md) for what each update contains.
+
 ## 📝 Notes
 
 - Source repo: https://github.com/FournyP/job-ops-railway-template
