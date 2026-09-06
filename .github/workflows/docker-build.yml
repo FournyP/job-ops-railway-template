@@ -1,0 +1,42 @@
+# Builds the Job Ops image on every PR and on main.
+#
+# Build only, deliberately: the image clones the upstream repo at JOB_OPS_TAG and
+# installs Playwright's browsers, and the app needs a Reactive Resume account and
+# an LLM key before it does anything useful. What this catches is the thing that
+# actually breaks here — an upstream tag or a base image that no longer builds.
+name: docker-build
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    # The Playwright browser download makes this much slower than the other
+    # templates in this set.
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build job-ops
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          load: false
+          cache-from: type=gha,scope=job-ops
+          cache-to: type=gha,mode=max,scope=job-ops
+
+  # entrypoint.override.sh runs before the app on every boot. A syntax error in
+  # it passes the image build and only surfaces on Railway.
+  entrypoint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Entrypoint parses
+        run: sh -n entrypoint.override.sh
