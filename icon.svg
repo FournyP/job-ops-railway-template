@@ -1,19 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <defs>
-    <linearGradient id="bg" x1="0%" x2="100%" y1="100%" y2="0%">
-      <stop offset="0%" stop-color="#1e3a8a"/>
-      <stop offset="100%" stop-color="#3b82f6"/>
-    </linearGradient>
-  </defs>
-
-  <!-- Full canvas background -->
-  <rect width="512" height="512" fill="url(#bg)"/>
-
-  <!-- Briefcase (Lucide briefcase-business) (24x24 viewBox) scaled x12 to 288x288, centered -->
-  <g transform="translate(112,112) scale(12)" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M12 12h.01" />
-    <path d="M16 6V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
-    <path d="M22 13a18.15 18.15 0 0 1-20 0" />
-    <rect width="20" height="14" x="2" y="6" rx="2" />
-  </g>
+  <!-- Job Ops mark, redrawn from the favicon at https://jobops.app: an arch
+       with bevelled feet and a dot, on the app's near-black background. -->
+  <rect width="512" height="512" fill="#1b1c20"/>
+  <path fill="#fff" d="M196 364 220 352 V203 a36 36 0 0 1 72 0 V352 l24 12 V203 a60 60 0 0 0 -120 0 Z"/>
+  <circle cx="256" cy="236" r="12" fill="#fff"/>
 </svg>
