@@ -1,29 +1,31 @@
 # Job Ops Railway Template
 
 Deploys [Job Ops](https://github.com/DaKheera47/job-ops), a job-application tracker that
-scores postings with an LLM and generates tailored CVs through Reactive Resume.
+pulls postings from a dozen boards, scores them with an LLM and generates tailored CVs.
 
 [![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/job-ops?referralCode=C3Uv6n&utm_medium=integration&utm_source=template&utm_campaign=generic)
 
 ## 🏗️ Architecture
 
 ```
-browser ──HTTPS──► job-ops :3001 (public domain) ──► LLM API (OpenAI-compatible)
-                        │                         ──► Reactive Resume (rxresu.me or RXRESUME_URL)
+browser ──HTTPS──► job-ops :3001 (public domain) ──► LLM provider (API key or bundled CLI login)
+                        │                         ──► Reactive Resume API (optional, rxresu.me or RXRESUME_URL)
                         ▼
-              job-ops-data volume (/app/data: jobs.db + PDFs)
+              job-ops-data volume (/app/data: jobs.db, PDFs, CLI logins, LaTeX cache)
 ```
 
-One Railway service, `job-ops`, built from [DaKheera47/job-ops](https://github.com/DaKheera47/job-ops) at a pinned tag (see `Dockerfile`). Drizzle migrations run on boot when `RUN_MIGRATIONS` is `true`. Everything the app persists lives on one volume.
+One Railway service, `job-ops`, running the official `ghcr.io/dakheera47/job-ops` image at a pinned tag (see `Dockerfile`). The upstream entrypoint runs the drizzle migrations and starts the server. Everything the app persists lives on one volume; PDFs render locally with Tectonic, or through Reactive Resume's hosted API if you give it a key.
 
 ## ✨ Features
 
 - **One service, one volume.** State is SQLite at `$DATA_DIR/jobs.db`, with the generated
-  PDFs beside it — no Postgres, no KeyDB and no bucket to run.
-- **LLM scoring and generation**, via any OpenAI-compatible endpoint (`LLM_API_KEY`, `MODEL`).
-- **PDF generation through Reactive Resume.** Uses the hosted service at rxresu.me by
-  default; set `RXRESUME_URL` to point at your own instance, deployed separately.
-- **Optional extras**: basic auth on writes, Gmail tracking, and the Adzuna and
+  PDFs beside it — no Postgres, no Redis, no browser service and no bucket.
+- **Nothing required to boot.** Job Ops walks you through providers and integrations in
+  the UI on first launch; every variable below only pre-fills that.
+- **LLM scoring and generation** via any OpenAI-compatible endpoint, Gemini, or the Codex,
+  Claude and Gemini CLIs bundled in the image (login from the UI, no key needed).
+- **Local PDF rendering**, with Reactive Resume's hosted API as an option.
+- **Optional extras**: basic auth, Gmail tracking, and the Adzuna, Seek (Apify) and
   UKVisaJobs extractors.
 
 ## 💁‍♀️ How to use
@@ -31,7 +33,7 @@ One Railway service, `job-ops`, built from [DaKheera47/job-ops](https://github.c
 1. Click the Railway button 👆
 2. Fill in the variables (see below)
 3. Deploy! 🚄
-4. Open `https://<job-ops-domain>`, add your CV in Reactive Resume, and start tracking postings.
+4. Open `https://<job-ops-domain>` and follow the onboarding: pick an LLM provider, upload your CV, add job boards.
 
 ## 🧱 Infrastructure as Code
 
@@ -42,9 +44,9 @@ variable.
 railway link
 npm install
 
-# First apply only; later runs omit these and preserve() keeps the values.
-export LLM_API_KEY=...
-export RXRESUME_EMAIL=you@example.com RXRESUME_PASSWORD='...'
+# Optional, first apply only; later runs omit these and preserve() keeps the values.
+export LLM_PROVIDER=openrouter LLM_API_KEY=...
+export RXRESUME_API_KEY=...
 
 npm run plan     # read the diff before applying
 npm run apply
@@ -52,9 +54,8 @@ railway domain --service job-ops
 ```
 
 This template deploys Job Ops and nothing else. Its state is SQLite on the volume, so it
-needs no Postgres, no KeyDB and no bucket. It talks to Reactive Resume over HTTP and
-defaults to the hosted service; set `RXRESUME_URL` to use your own instance, deployed from
-its own project.
+needs no Postgres, no Redis and no bucket. Reactive Resume is optional and reached over
+HTTP; set `RXRESUME_URL` to use your own instance, deployed from its own project.
 
 Needs the Railway CLI 5.42.1 or newer: the IaC engine ships in the CLI, not in the npm
 package. If you forked this repo, change `REPO` in `railway.ts` to your own before applying.
@@ -70,26 +71,30 @@ Railway template updates are opt-in — an existing deployment keeps running unt
 
 ## 🔧 Variables
 
-| Variable                    | Required | Description                                                                                               |
-| --------------------------- | -------- | --------------------------------------------------------------------------------------------------------- |
-| `LLM_API_KEY`               | yes      | Key for an OpenAI-compatible endpoint, used for scoring and CV generation.                                |
-| `MODEL`                     | no       | Model name sent to that endpoint, default `google/gemini-3-flash-preview`.                                |
-| `RXRESUME_EMAIL`            | yes      | Reactive Resume account used to render PDFs.                                                              |
-| `RXRESUME_PASSWORD`         | yes      | Password for that account.                                                                                |
-| `RXRESUME_URL`              | no       | Base URL of a self-hosted Reactive Resume. Unset uses the hosted service at rxresu.me.                    |
-| `JOBOPS_PUBLIC_BASE_URL`    | no       | Public URL used in links generated by background jobs. The IaC file sets it from Railway's public domain. |
-| `BASIC_AUTH_USER`           | no       | With `BASIC_AUTH_PASSWORD`, puts write operations behind HTTP basic auth.                                 |
-| `BASIC_AUTH_PASSWORD`       | no       | See above.                                                                                                |
-| `GMAIL_OAUTH_CLIENT_ID`     | no       | Gmail tracking integration. Needs the secret and redirect URI as well.                                    |
-| `GMAIL_OAUTH_CLIENT_SECRET` | no       | See above.                                                                                                |
-| `GMAIL_OAUTH_REDIRECT_URI`  | no       | `https://<job-ops-domain>/oauth/gmail/callback`.                                                          |
-| `ADZUNA_APP_ID`             | no       | Adzuna extractor credentials.                                                                             |
-| `ADZUNA_APP_KEY`            | no       | See above.                                                                                                |
-| `UKVISAJOBS_EMAIL`          | no       | UKVisaJobs extractor credentials.                                                                         |
-| `UKVISAJOBS_PASSWORD`       | no       | See above.                                                                                                |
-| `RUN_MIGRATIONS`            | no       | `true` (default) runs the drizzle migrations on boot.                                                     |
-| `DATA_DIR`                  | no       | Where `jobs.db` and the PDFs live, default `/app/data`. Must be the volume's mount path.                  |
-| `PORT`                      | no       | Listen port, default `3001`. The IaC file pins it.                                                        |
+None are required: the app boots empty and configures itself from the UI. Set these to pre-fill it.
+
+| Variable                    | Required | Description                                                                                                                                            |
+| --------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `LLM_PROVIDER`              | no       | `atlascloud`, `openrouter`, `orcarouter`, `requesty`, `openai`, `gemini`, `gemini_cli`, `claude_cli` or `codex`. The CLI providers log in from the UI. |
+| `LLM_API_KEY`               | no       | Key for the chosen API provider.                                                                                                                       |
+| `MODEL`                     | no       | Model name sent to that provider, default `google/gemini-3-flash-preview`.                                                                             |
+| `RXRESUME_API_KEY`          | no       | Reactive Resume v5 API key, for CVs rendered by rxresu.me instead of locally.                                                                          |
+| `RXRESUME_URL`              | no       | Base URL of a self-hosted Reactive Resume. Unset uses the hosted service.                                                                              |
+| `JOBOPS_PUBLIC_BASE_URL`    | no       | Public URL used in links generated by background jobs. The IaC file sets it from Railway's public domain.                                              |
+| `BASIC_AUTH_USER`           | no       | With `BASIC_AUTH_PASSWORD`, puts the app and API behind HTTP basic auth. Unset, the app is open.                                                       |
+| `BASIC_AUTH_PASSWORD`       | no       | See above.                                                                                                                                             |
+| `GMAIL_OAUTH_CLIENT_ID`     | no       | Gmail tracking integration. Needs the secret as well.                                                                                                  |
+| `GMAIL_OAUTH_CLIENT_SECRET` | no       | See above.                                                                                                                                             |
+| `GMAIL_OAUTH_REDIRECT_URI`  | no       | Defaults to `<request-origin>/oauth/gmail/callback`.                                                                                                   |
+| `ADZUNA_APP_ID`             | no       | Adzuna extractor credentials.                                                                                                                          |
+| `ADZUNA_APP_KEY`            | no       | See above.                                                                                                                                             |
+| `APIFY_TOKEN`               | no       | Apify token for the Seek extractor.                                                                                                                    |
+| `UKVISAJOBS_EMAIL`          | no       | UKVisaJobs extractor credentials.                                                                                                                      |
+| `UKVISAJOBS_PASSWORD`       | no       | See above.                                                                                                                                             |
+| `DATA_DIR`                  | no       | Where `jobs.db` and the PDFs live, default `/app/data`. Must be the volume's mount path.                                                               |
+| `CODEX_HOME`                | no       | Codex CLI login directory. The IaC file puts it under `DATA_DIR` so the login survives redeploys.                                                      |
+| `XDG_CACHE_HOME`            | no       | Cache directory. The IaC file puts it under `DATA_DIR` so Tectonic's LaTeX bundle is not re-downloaded on every deploy.                                |
+| `PORT`                      | no       | Listen port, default `3001`. The IaC file pins it.                                                                                                     |
 
 ## 📝 Notes
 

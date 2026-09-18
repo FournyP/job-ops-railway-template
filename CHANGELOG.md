@@ -6,6 +6,26 @@ or after the change itself when a release only touches this template. The format
 
 Before applying an update, read [Upgrading](README.md#️-upgrading).
 
+## Job Ops 0.13.1 — 2026-09-18
+
+### Changed
+
+- The image is now the official `ghcr.io/dakheera47/job-ops` at a pinned tag instead of a
+  source build of `v0.2.0`. The upstream entrypoint runs the migrations; the template's own
+  entrypoint and `RUN_MIGRATIONS` are gone.
+- `RXRESUME_EMAIL` / `RXRESUME_PASSWORD` are replaced by `RXRESUME_API_KEY` (Reactive
+  Resume v5), and Reactive Resume is optional: PDFs render locally by default.
+- `LLM_PROVIDER` and `APIFY_TOKEN` are declared; `CODEX_HOME` and `XDG_CACHE_HOME` point
+  under `DATA_DIR` so CLI logins and the LaTeX cache survive redeploys.
+- CI boots the image and waits for `/health` instead of only building it.
+
+### Upgrade notes
+
+- **Back up the volume before upgrading.** Eleven upstream releases of migrations run on
+  the first boot.
+- Set `RXRESUME_API_KEY` if you still want Reactive Resume; the old email and password
+  variables are ignored by 0.13.
+
 ## Infrastructure as Code — 2026-09-06
 
 ### Added

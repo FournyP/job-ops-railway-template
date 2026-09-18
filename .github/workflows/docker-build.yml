@@ -1,9 +1,7 @@
-# Builds the Job Ops image on every PR and on main.
-#
-# Build only, deliberately: the image clones the upstream repo at JOB_OPS_TAG and
-# installs Playwright's browsers, and the app needs a Reactive Resume account and
-# an LLM key before it does anything useful. What this catches is the thing that
-# actually breaks here — an upstream tag or a base image that no longer builds.
+# Builds the Job Ops image on every PR and on main, then boots it and waits for
+# /health. The image is the upstream release pinned in the Dockerfile, so what
+# this catches is a tag that no longer exists or an image that no longer starts
+# without configuration — the app must come up with no variables set.
 name: docker-build
 
 on:
@@ -17,9 +15,6 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    # The Playwright browser download makes this much slower than the other
-    # templates in this set.
-    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
@@ -28,15 +23,20 @@ jobs:
         with:
           context: .
           push: false
-          load: false
+          load: true
+          tags: job-ops:ci
           cache-from: type=gha,scope=job-ops
           cache-to: type=gha,mode=max,scope=job-ops
 
-  # entrypoint.override.sh runs before the app on every boot. A syntax error in
-  # it passes the image build and only surfaces on Railway.
-  entrypoint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Entrypoint parses
-        run: sh -n entrypoint.override.sh
+      - name: Boots and answers /health with no configuration
+        run: |
+          docker run -d --name jo -p 3001:3001 job-ops:ci
+          for i in $(seq 1 60); do
+            curl -fsS http://localhost:3001/health >/dev/null 2>&1 && break
+            sleep 2
+          done
+          curl -fsS http://localhost:3001/health | grep -q '"status":"ok"'
+
+      - name: Logs on failure
+        if: failure()
+        run: docker logs jo || true

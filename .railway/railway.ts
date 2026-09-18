@@ -3,15 +3,15 @@
 // An apply deletes every resource this file does not declare, so link it to a
 // project dedicated to this template.
 //
-// Secrets stay out of here. Export them for the first apply; later runs omit
-// them and preserve() keeps what Railway holds.
+// Nothing is required to boot: Job Ops configures itself from the UI on first
+// launch. Secrets stay out of here; export any you want set for the first
+// apply, later runs omit them and preserve() keeps what Railway holds.
 //
-//   export LLM_API_KEY=...
-//   export RXRESUME_EMAIL=you@example.com RXRESUME_PASSWORD='...'
+//   export RXRESUME_API_KEY=...
 //
-// Job Ops and nothing else. Its state is SQLite on the volume below, so it
-// needs no Postgres, no KeyDB and no bucket. It talks to Reactive Resume over
-// HTTP; self-host that from its own project, not this one.
+// Job Ops and nothing else. Its state is SQLite on the volume below, PDFs are
+// rendered locally or through Reactive Resume's hosted API, so it needs no
+// Postgres, no Redis, no browser service and no bucket.
 
 import { defineRailway, github, preserve, project, service, volume } from "railway/iac";
 
@@ -43,20 +43,29 @@ export default defineRailway(() => {
       numReplicas: 1,
     },
     env: {
+      // The port the image binds. Pinned so the domain's target port and the
+      // port Railway dials cannot disagree, which reads as "connection refused".
       PORT: "3001",
       DATA_DIR,
 
-      // The entrypoint runs the drizzle migrations before starting the server.
-      RUN_MIGRATIONS: "true",
+      // One volume per service, so everything that must survive a redeploy
+      // lives under DATA_DIR: the Codex CLI login and Tectonic's LaTeX support
+      // bundle, which is otherwise re-downloaded on the first PDF of every
+      // deploy and can hit a 429.
+      CODEX_HOME: `${DATA_DIR}/codex-home`,
+      XDG_CACHE_HOME: `${DATA_DIR}/cache`,
 
-      // Scoring and generation.
+      // Scoring and generation. Any of the providers in upstream's .env.example;
+      // the CLI providers (codex, claude_cli, gemini_cli) are bundled in the
+      // image and log in from the UI instead of taking a key here.
+      LLM_PROVIDER: fromEnvOrPreserve("LLM_PROVIDER"),
       LLM_API_KEY: fromEnvOrPreserve("LLM_API_KEY"),
-      MODEL: "google/gemini-3-flash-preview",
+      MODEL: process.env.MODEL ?? "google/gemini-3-flash-preview",
 
-      // The Reactive Resume account Job Ops drives. Leave RXRESUME_URL unset to
-      // use the hosted service.
-      RXRESUME_EMAIL: fromEnvOrPreserve("RXRESUME_EMAIL"),
-      RXRESUME_PASSWORD: fromEnvOrPreserve("RXRESUME_PASSWORD"),
+      // Reactive Resume v5 API key, for tailored CVs rendered by rxresu.me.
+      // Leave RXRESUME_URL unset to use the hosted service.
+      RXRESUME_API_KEY: fromEnvOrPreserve("RXRESUME_API_KEY"),
+      RXRESUME_URL: fromEnvOrPreserve("RXRESUME_URL"),
 
       // Background tasks have no request to derive a host from. Resolves to a
       // bare "https://" until the service has a domain, so generate one before
@@ -65,7 +74,6 @@ export default defineRailway(() => {
 
       // Optional, and preserved rather than omitted: an apply deletes variables
       // this file does not declare, which would silently disable these.
-      RXRESUME_URL: fromEnvOrPreserve("RXRESUME_URL"),
       BASIC_AUTH_USER: fromEnvOrPreserve("BASIC_AUTH_USER"),
       BASIC_AUTH_PASSWORD: fromEnvOrPreserve("BASIC_AUTH_PASSWORD"),
       GMAIL_OAUTH_CLIENT_ID: fromEnvOrPreserve("GMAIL_OAUTH_CLIENT_ID"),
@@ -73,6 +81,7 @@ export default defineRailway(() => {
       GMAIL_OAUTH_REDIRECT_URI: fromEnvOrPreserve("GMAIL_OAUTH_REDIRECT_URI"),
       ADZUNA_APP_ID: fromEnvOrPreserve("ADZUNA_APP_ID"),
       ADZUNA_APP_KEY: fromEnvOrPreserve("ADZUNA_APP_KEY"),
+      APIFY_TOKEN: fromEnvOrPreserve("APIFY_TOKEN"),
       UKVISAJOBS_EMAIL: fromEnvOrPreserve("UKVISAJOBS_EMAIL"),
       UKVISAJOBS_PASSWORD: fromEnvOrPreserve("UKVISAJOBS_PASSWORD"),
     },
