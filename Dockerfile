@@ -3,7 +3,7 @@
 # the upstream entrypoint, which runs the drizzle migrations and starts the
 # server. Runtime configuration is all environment, see .railway/railway.ts.
 # https://github.com/DaKheera47/job-ops
-FROM ghcr.io/dakheera47/job-ops:v0.13.1
+FROM ghcr.io/dakheera47/job-ops:v0.14.0
 
 # Railway ignores the image's HEALTHCHECK and probes healthcheckPath instead;
 # the upstream default is kept for docker run.
